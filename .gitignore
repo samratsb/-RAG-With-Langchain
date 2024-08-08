@@ -1,0 +1,5 @@
+\!.gitignore
+.env
+config.json
+RAG_proj
+markdown_files
