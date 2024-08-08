@@ -43,7 +43,6 @@ def list_markdown_files(repo_owner, repo_name, path='', branch='main'):
         return []
 
 def fetch_and_store_file_content(repo_owner, repo_name, file_info, branch='main'):
-    """Fetch file content from GitHub and store it locally."""
     file_path = file_info['path']
     url = f'{BASE_URL}/repos/{repo_owner}/{repo_name}/contents/{file_path}'
     headers = {
@@ -69,7 +68,6 @@ def fetch_and_store_file_content(repo_owner, repo_name, file_info, branch='main'
         print(f"Failed to fetch file content: {response.status_code}")
         print(response.json())
 
-# Example usage
 markdown_files = list_markdown_files(REPO_OWNER, REPO_NAME, branch=BRANCH)
 for file_info in markdown_files:
     fetch_and_store_file_content(REPO_OWNER, REPO_NAME, file_info, branch=BRANCH)

@@ -3,3 +3,4 @@
 config.json
 RAG_proj
 markdown_files
+__pycache__

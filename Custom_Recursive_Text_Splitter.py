@@ -1,3 +1,4 @@
+import document_loader as dl
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 def split_text(docs, chunk_size=1000, chunk_overlap=200):
@@ -11,5 +12,5 @@ def split_text(docs, chunk_size=1000, chunk_overlap=200):
     return chunks
 
 # Example usage
-chunks = split_text(docs)
+chunks = split_text(dl.docs)
 print(f"Created {len(chunks)} chunks.")
