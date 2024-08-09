@@ -1,8 +1,7 @@
 import document_loader as dl
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter #type: ignore
 
 def split_text(docs):
-    # Initialize the RecursiveCharacterTextSplitter
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
@@ -11,9 +10,7 @@ def split_text(docs):
     )
     chunks = []
 
-    # Iterate over each document and split it into chunks
     for doc in docs:
-        # Check if doc is a Document object with page_content
         text = getattr(doc, "page_content", None) or doc
         if isinstance(text, str):
             try:
@@ -24,7 +21,8 @@ def split_text(docs):
             print(f"Document is not a string or does not have a page_content attribute: {doc}")
     return chunks
 
-# Example usage
-docs = dl.load_docs()  # Ensure dl.docs is a list of documents
-chunks = split_text(docs)
-print(f"Created {len(chunks)} chunks.")
+if __name__ == "__main__":
+    import document_loader as dl
+    docs = dl.load_docs()
+    chunks = split_text(docs)
+    print(f"Created {len(chunks)} chunks.")

@@ -1,67 +1,37 @@
-# Fetch markdown files from certain repos and store them locally in the markdown_files folder
-
-import requests # type: ignore
-import base64
-import os
+import requests, base64, os #type: ignore
 from dotenv import load_dotenv #type: ignore
 
 load_dotenv()
 
-ACCESS_TOKEN = os.getenv('GITHUB_TOKEN')  # Add your own access token here
+#loaded from .env file
+ACCESS_TOKEN = os.getenv('GITHUB_TOKEN')
+REPO_OWNER = os.getenv('REPO_OWNER')
+REPO_NAME = os.getenv('REPO_NAME')
+BRANCH = os.getenv('BRANCH')
 
-REPO_OWNER = 'pytorch'
-REPO_NAME = 'pytorch'
-BRANCH = 'main'
+BASE_URL = os.getenv('BASE_URL')
+OUTPUT_DIR = os.getenv('OUTPUT_DIR')
 
-BASE_URL = 'https://api.github.com'
-
-OUTPUT_DIR = 'markdown_files'
-
-# Ensure output directory exists
+#check if you have created the directory
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def fetch_markdown_files(repo_owner, repo_name, branch='main', path=''):
-    url = f'{BASE_URL}/repos/{repo_owner}/{repo_name}/contents/{path}'
-    headers = {
-        'Authorization': f'token {ACCESS_TOKEN}',
-        'Accept': 'application/vnd.github.v3+json',
-    }
-    params = {
-        'ref': branch
-    }
-    response = requests.get(url, headers=headers, params=params)
+def fetch_and_store(path=''):
+    url = f'{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/contents/{path}'
+    headers = {'Authorization': f'token {ACCESS_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
+    response = requests.get(url, headers=headers, params={'ref': BRANCH})
 
     if response.status_code == 200:
-        files = response.json()
-        for file in files:
+        for file in response.json():
             if file['name'].lower().endswith('.md'):
-                file_path = file['path']
-                fetch_and_store_file_content(file_path)
+                content_response = requests.get(file['url'], headers=headers)
+                if content_response.status_code == 200:
+                    content = base64.b64decode(content_response.json()['content']).decode('utf-8')
+                    with open(os.path.join(OUTPUT_DIR, file['name']), 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    print(f"Stored {file['name']} successfully.")
+                else:
+                    print(f"Failed to fetch file content: {content_response.status_code}")
     else:
         print(f"Failed to list files: {response.status_code}")
-        print(response.json())
 
-def fetch_and_store_file_content(file_path):
-    url = f'{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/contents/{file_path}'
-    headers = {
-        'Authorization': f'token {ACCESS_TOKEN}',
-        'Accept': 'application/vnd.github.v3+json',
-    }
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        file_info = response.json()
-        content = base64.b64decode(file_info['content']).decode('utf-8')
-
-        # Write the content to a local file
-        local_file_path = os.path.join(OUTPUT_DIR, file_info['name'])
-        with open(local_file_path, 'w', encoding='utf-8') as file:
-            file.write(content)
-
-        print(f"Stored {file_info['name']} successfully.")
-    else:
-        print(f"Failed to fetch file content: {response.status_code}")
-        print(response.json())
-
-# Fetch and store markdown files
-fetch_markdown_files(REPO_OWNER, REPO_NAME, branch=BRANCH)
+fetch_and_store()
