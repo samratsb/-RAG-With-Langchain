@@ -1,5 +1,4 @@
-# fetch markdown files from certain repos, drops them in markdown_files folder locally
-
+# Fetch markdown files from certain repos and store them locally in the markdown_files folder
 
 import requests
 import base64
@@ -8,9 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ACCESS_TOKEN = os.getenv('GITHUB_TOKEN') # Add your own access token here
+ACCESS_TOKEN = os.getenv('GITHUB_TOKEN')  # Add your own access token here
 
-#
 REPO_OWNER = 'pytorch'
 REPO_NAME = 'pytorch'
 BRANCH = 'main'
@@ -22,7 +20,7 @@ OUTPUT_DIR = 'markdown_files'
 # Ensure output directory exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def list_markdown_files(repo_owner, repo_name, path='', branch='main'):
+def fetch_markdown_files(repo_owner, repo_name, branch='main', path=''):
     url = f'{BASE_URL}/repos/{repo_owner}/{repo_name}/contents/{path}'
     headers = {
         'Authorization': f'token {ACCESS_TOKEN}',
@@ -35,24 +33,21 @@ def list_markdown_files(repo_owner, repo_name, path='', branch='main'):
 
     if response.status_code == 200:
         files = response.json()
-        markdown_files = [file for file in files if file['name'].endswith('.md')]
-        return markdown_files
+        for file in files:
+            if file['name'].lower().endswith('.md'):
+                file_path = file['path']
+                fetch_and_store_file_content(file_path)
     else:
         print(f"Failed to list files: {response.status_code}")
         print(response.json())
-        return []
 
-def fetch_and_store_file_content(repo_owner, repo_name, file_info, branch='main'):
-    file_path = file_info['path']
-    url = f'{BASE_URL}/repos/{repo_owner}/{repo_name}/contents/{file_path}'
+def fetch_and_store_file_content(file_path):
+    url = f'{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/contents/{file_path}'
     headers = {
         'Authorization': f'token {ACCESS_TOKEN}',
         'Accept': 'application/vnd.github.v3+json',
     }
-    params = {
-        'ref': branch
-    }
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
         file_info = response.json()
@@ -68,6 +63,5 @@ def fetch_and_store_file_content(repo_owner, repo_name, file_info, branch='main'
         print(f"Failed to fetch file content: {response.status_code}")
         print(response.json())
 
-markdown_files = list_markdown_files(REPO_OWNER, REPO_NAME, branch=BRANCH)
-for file_info in markdown_files:
-    fetch_and_store_file_content(REPO_OWNER, REPO_NAME, file_info, branch=BRANCH)
+# Fetch and store markdown files
+fetch_markdown_files(REPO_OWNER, REPO_NAME, branch=BRANCH)
