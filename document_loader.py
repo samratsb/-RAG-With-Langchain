@@ -1,9 +1,9 @@
-from langchain_community.document_loaders import DirectoryLoader
+from langchain.document_loaders import DirectoryLoader
 
 DATA_PATH = "markdown_files"  # Update this to your directory path
 
 def load_docs():
-    loader = DirectoryLoader(DATA_PATH, glob="*.md", show_progress=True)
+    loader = DirectoryLoader("../", glob="**/*.md", show_progress=True ,use_multithreading=True)
     docs = loader.load()
     return docs
 

@@ -1,9 +1,9 @@
 # Fetch markdown files from certain repos and store them locally in the markdown_files folder
 
-import requests
+import requests # type: ignore
 import base64
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv #type: ignore
 
 load_dotenv()
 
