@@ -5,3 +5,5 @@ RAG_proj
 markdown_files
 __pycache__
 embeddings
+embeddings.db
+chroma_db

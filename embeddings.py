@@ -1,13 +1,20 @@
+import logging
+import time
 import requests
 from dotenv import load_dotenv
 import os
+import chromadb
+import uuid
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Get model name and Hugging Face API token from environment variables
+# Get environment variables
 MODEL_NAME = os.getenv('MODEL_NAME')
-HF_API_TOKEN = os.getenv('HF_API_TOKEN')  # Ensure this is set in your .env file
+HF_API_TOKEN = os.getenv('HF_API_TOKEN')
 
 # Define the Hugging Face API URL
 HF_API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
@@ -18,57 +25,87 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+import chromadb
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Initialize Chroma client
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+
+# Get or create a collection
+try:
+    collection = chroma_client.get_or_create_collection(name="my_embeddings")
+    logging.info("Collection initialized successfully.")
+except Exception as e:
+    logging.error(f"Failed to initialize collection: {e}")
+
 def get_embeddings(texts):
-    # Make a POST request to the Hugging Face API
-    response = requests.post(HF_API_URL, headers=HEADERS, json={"inputs": texts})
-    
+    payload = {"inputs": texts}
+    response = requests.post(HF_API_URL, headers=HEADERS, json=payload)
+
     if response.status_code == 200:
         return response.json()
+    elif response.status_code == 503:
+        error_info = response.json()
+        estimated_time = error_info.get("estimated_time", 10)
+        logging.error(f"Model is loading. Retrying in {estimated_time} seconds...")
+        time.sleep(estimated_time)
+        return get_embeddings(texts)
     else:
-        print(f"Failed to get embeddings: {response.status_code}")
-        print(f"Response: {response.text}")
+        logging.error(f"Failed to get embeddings: {response.status_code}")
+        logging.error(f"Response: {response.text}")
         return None
 
-def store_embeddings(chunks):
-    # Ensure chunks are in the expected format
-    if isinstance(chunks[0], str):
-        chunk_texts = chunks
-    else:
-        chunk_texts = [chunk.get('text', '') for chunk in chunks]
-
-    # Get embeddings for each chunk
-    embeddings_response = get_embeddings(chunk_texts)
+def get_and_store_embeddings(texts):
+    embeddings_response = get_embeddings(texts)
     
     if embeddings_response:
-        # Process embeddings as needed
-        chunk_embeddings = embeddings_response["embeddings"]
+        embeddings = embeddings_response.get("embeddings", [])
         
-        # Create or connect to a Chroma collection
-        client = Chroma()
-        collection = client.get_or_create_collection(name=MODEL_NAME)
-
-        # Add embeddings to Chroma
-        collection.add(texts=chunk_texts, embeddings=chunk_embeddings)
-
-        print("Embeddings stored successfully.")
+        if not embeddings:
+            logging.error("No embeddings returned from API")
+            return None
+        
+        ids = [str(uuid.uuid4()) for _ in texts]
+        
+        # Store embeddings in ChromaDB
+        collection.add(
+            texts=texts,
+            embeddings=embeddings,
+            ids=ids
+        )
+        
+        logging.info(f"Stored {len(embeddings)} embeddings in ChromaDB")
+        return embeddings
     else:
-        print("Failed to store embeddings.")
+        logging.error("Failed to get embeddings")
+        return None
 
-def query_embedding(query_text):
-    # Get embedding for the query
+def query_embeddings(query_text):
     query_embedding_response = get_embeddings([query_text])
     
     if query_embedding_response:
-        query_embedding = query_embedding_response["embeddings"][0]
+        query_embedding = query_embedding_response.get("embeddings", [])
         
-        # Create or connect to a Chroma collection
-        client = Chroma()
-        collection = client.get_or_create_collection(name=MODEL_NAME)
-
-        # Query the collection
-        results = collection.query(embedding=query_embedding)
-
+        if not query_embedding:
+            logging.error("No query embedding returned from API")
+            return None
+        
+        # Query embeddings from ChromaDB
+        results = collection.query(
+            query_embeddings=query_embedding,
+            n_results=10  # Adjust the number of results as needed
+        )
         return results
     else:
-        print("Failed to query embedding.")
+        logging.error("Failed to get query embedding")
         return None
+
+if __name__ == "__main__":
+    # Example usage
+    texts = ["Sample text for embedding."]
+    get_and_store_embeddings(texts)
+    results = query_embeddings("Sample text for query.")
+    print("Query results:", results)
