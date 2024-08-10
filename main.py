@@ -1,12 +1,23 @@
-from data import fetch_and_store
 from document_loader import load_docs
 from recursive_text_splitter import split_text
 from embeddings import store_embeddings, query_embedding
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+OUTPUT_DIR = os.getenv('OUTPUT_DIR')
 
 def main():
-    # Fetch,store and load documents from GitHub
-    docs = load_docs()
+    # Find markdown files in the directory
+    from document_loader import find_markdown_files
+    markdown_files = find_markdown_files(OUTPUT_DIR)
+
+    if not markdown_files:
+        print("No Markdown files found. Please ensure documents are fetched.")
+        return
+
+    # Load documents
+    docs = load_docs(markdown_files)
     print(f"Loaded {len(docs)} documents.")
 
     # Split documents into chunks

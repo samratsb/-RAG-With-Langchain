@@ -1,41 +1,74 @@
-from langchain_community.document_loaders import DirectoryLoader #type: ignore
-from langchain_community.embeddings import HuggingFaceEmbeddings #type: ignore
+import requests
+from dotenv import load_dotenv
+import os
 
-from langchain_community.embeddings import HuggingFaceEmbeddings #type: ignore
-from langchain_chroma import Chroma #type: ignore
-from langchain.vectorstores import Chroma # type: ignore
-from langchain_community.embeddings import HuggingFaceEmbeddings # type: ignore
-from langchain_community.vectorstores import Chroma # type: ignore
+# Load environment variables from .env file
+load_dotenv()
+
+# Get model name and Hugging Face API token from environment variables
+MODEL_NAME = os.getenv('MODEL_NAME')
+HF_API_TOKEN = os.getenv('HF_API_TOKEN')  # Ensure this is set in your .env file
+
+# Define the Hugging Face API URL
+HF_API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
+
+# Set up headers with API token
+HEADERS = {
+    "Authorization": f"Bearer {HF_API_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+def get_embeddings(texts):
+    # Make a POST request to the Hugging Face API
+    response = requests.post(HF_API_URL, headers=HEADERS, json={"inputs": texts})
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to get embeddings: {response.status_code}")
+        print(f"Response: {response.text}")
+        return None
 
 def store_embeddings(chunks):
-    # Initialize the embedding model
-    embeddings = HuggingFaceEmbeddings(model_name='bert-base-uncased')
+    # Ensure chunks are in the expected format
+    if isinstance(chunks[0], str):
+        chunk_texts = chunks
+    else:
+        chunk_texts = [chunk.get('text', '') for chunk in chunks]
+
+    # Get embeddings for each chunk
+    embeddings_response = get_embeddings(chunk_texts)
     
-    # Create or connect to a Chroma collection
-    client = Chroma()
-    collection = client.get_or_create_collection(name='document_embeddings')
+    if embeddings_response:
+        # Process embeddings as needed
+        chunk_embeddings = embeddings_response["embeddings"]
+        
+        # Create or connect to a Chroma collection
+        client = Chroma()
+        collection = client.get_or_create_collection(name=MODEL_NAME)
 
-    # Generate embeddings for each chunk
-    chunk_texts = [chunk['text'] for chunk in chunks]  # Assuming chunks is a list of dicts with 'text' key
-    chunk_embeddings = embeddings.embed(chunk_texts)
+        # Add embeddings to Chroma
+        collection.add(texts=chunk_texts, embeddings=chunk_embeddings)
 
-    # Add embeddings to Chroma
-    collection.add(texts=chunk_texts, embeddings=chunk_embeddings)
-
-    print("Embeddings stored successfully.")
+        print("Embeddings stored successfully.")
+    else:
+        print("Failed to store embeddings.")
 
 def query_embedding(query_text):
-    # Initialize the embedding model
-    embeddings = HuggingFaceEmbeddings(model_name='bert-base-uncased')
+    # Get embedding for the query
+    query_embedding_response = get_embeddings([query_text])
+    
+    if query_embedding_response:
+        query_embedding = query_embedding_response["embeddings"][0]
+        
+        # Create or connect to a Chroma collection
+        client = Chroma()
+        collection = client.get_or_create_collection(name=MODEL_NAME)
 
-    # Create or connect to a Chroma collection
-    client = Chroma()
-    collection = client.get_or_create_collection(name='document_embeddings')
+        # Query the collection
+        results = collection.query(embedding=query_embedding)
 
-    # Generate embedding for the query
-    query_embedding = embeddings.embed([query_text])
-
-    # Query the collection
-    results = collection.query(embedding=query_embedding[0])
-
-    return results
+        return results
+    else:
+        print("Failed to query embedding.")
+        return None
