@@ -132,10 +132,10 @@ def main():
                     print(f"Document: {doc}, Distance: {dist}, ID: {id}")
             else:
                 print("No results found.")
-        
+
         elif choice == 'exit':
             break
-        
+
         else:
             print("Invalid option. Please try again.")
 
