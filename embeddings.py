@@ -72,9 +72,10 @@ def get_and_store_embeddings(texts):
         # Store embeddings in ChromaDB
         try:
             collection.add(
+                documents=texts,  # Changed from 'texts' to 'documents'
                 embeddings=embeddings,
                 ids=ids,
-                metadatas=[{"text": text} for text in texts]  # Metadata to store text
+                metadatas=[{"text": text} for text in texts]
             )
             logging.info(f"Stored {len(embeddings)} embeddings in ChromaDB")
         except Exception as e:
@@ -95,10 +96,9 @@ def query_embeddings(query_text):
     
     if query_embedding:
         try:
-            # Query embeddings from ChromaDB
             results = collection.query(
                 query_embeddings=query_embedding,
-                n_results=10  # Adjust the number of results as needed
+                n_results=10
             )
             return results
         except Exception as e:

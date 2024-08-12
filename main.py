@@ -73,16 +73,16 @@ def get_and_store_embeddings(texts):
         # Store embeddings in ChromaDB
         try:
             collection.add(
-                texts=texts,
+                documents=texts,  # Changed from 'texts' to 'documents'
                 embeddings=embeddings,
-                ids=ids
+                ids=ids,
+                metadatas=[{"text": text} for text in texts]  # Added metadatas
             )
             logging.info(f"Stored {len(embeddings)} embeddings in ChromaDB")
+            return embeddings
         except Exception as e:
             logging.error(f"Failed to store embeddings: {e}")
             return None
-        
-        return embeddings
     else:
         logging.error("Failed to get embeddings")
         return None
@@ -99,7 +99,7 @@ def query_embeddings(query_text):
             # Query embeddings from ChromaDB
             results = collection.query(
                 query_embeddings=query_embedding,
-                n_results=3  # Adjust the number of results as needed
+                n_results=10  # Adjust the number of results as needed
             )
             return results
         except Exception as e:
@@ -110,32 +110,32 @@ def query_embeddings(query_text):
         return None
 
 def main():
+    initialize_collection()
+    
     while True:
-        action = input("Enter 'add' to add text, 'query' to query text, or 'exit' to exit: ").strip().lower()
-
-        if action == 'add':
-            text = input("Enter text to add: ").strip()
-            if text:
-                get_and_store_embeddings([text])
+        choice = input("Enter 'add' to add text, 'query' to query text, or 'exit' to exit: ")
+        
+        if choice == 'add':
+            text = input("Enter text to add: ")
+            result = get_and_store_embeddings([text])
+            if result is not None:
                 print("Text added successfully.")
             else:
-                print("No text provided.")
-
-        elif action == 'query':
-            query_text = input("Enter text to query: ").strip()
-            if query_text:
-                results = query_embeddings(query_text)
-                if results:
-                    print("Query results:", results)
-                else:
-                    print("No results found.")
+                print("Failed to add text.")
+        
+        elif choice == 'query':
+            query = input("Enter query text: ")
+            results = query_embeddings(query)
+            if results and results['documents'][0]:
+                print("Query results:")
+                for doc, dist, id in zip(results['documents'][0], results['distances'][0], results['ids'][0]):
+                    print(f"Document: {doc}, Distance: {dist}, ID: {id}")
             else:
-                print("No query text provided.")
-
-        elif action == 'exit':
-            print("Exiting.")
+                print("No results found.")
+        
+        elif choice == 'exit':
             break
-
+        
         else:
             print("Invalid option. Please try again.")
 
