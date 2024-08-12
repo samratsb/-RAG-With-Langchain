@@ -1,7 +1,8 @@
+#embeddings.py
+
 import logging
 import os
 import uuid
-
 from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModel
 import torch
@@ -21,8 +22,9 @@ logging.info(f"Loading model: {MODEL_NAME}")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModel.from_pretrained(MODEL_NAME)
 
-# Initialize Chroma client
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+# Initialize Chroma client with path to chroma_db directory
+db_path = "./chroma_db/embeddings.db"
+chroma_client = chromadb.PersistentClient(path=db_path)
 
 # Initialize collection variable
 collection = None

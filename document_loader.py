@@ -1,50 +1,35 @@
 import os
 import logging
 from dotenv import load_dotenv
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import DirectoryLoader
 import data
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
 OUTPUT_DIR = os.getenv('OUTPUT_DIR')
 
-def find_markdown_files(directory):
+def load_docs(directory=OUTPUT_DIR):
     if not directory:
         raise ValueError("Directory path is not set")
 
-    markdown_files = []
-    for root, dirs, files in os.walk(directory):
-        logging.info(f"Checking directory: {root}")
-        for file in files:
-            if file.lower().endswith('.md'):
-                file_path = os.path.join(root, file)
-                logging.info(f"Found markdown file: {file} in {root}")
-                markdown_files.append(file_path)
-    return markdown_files
-
-def load_docs(file_paths):
-    logging.info(f"Attempting to load documents from: {file_paths}")
-    docs = []
-    for file_path in file_paths:
-        try:
-            loader = TextLoader(file_path)
-            docs.extend(loader.load())
-            logging.info(f"Loaded document from: {file_path}")
-        except Exception as e:
-            logging.error(f"Error loading document from {file_path}: {e}")
-    logging.info(f"Total documents loaded: {len(docs)}")
-    return docs
+    logging.info(f"Attempting to load documents from: {directory}")
+    try:
+        loader = DirectoryLoader(directory, glob="**/*.md", show_progress=True)
+        docs = loader.load()
+        logging.info(f"Loaded {len(docs)} documents from {directory}")
+        return docs
+    except Exception as e:
+        logging.error(f"Error loading documents from {directory}: {e}")
+        return []
 
 if __name__ == "__main__":
-    markdown_files = find_markdown_files(OUTPUT_DIR)
-
-    if not markdown_files:
+    if not os.path.exists(OUTPUT_DIR) or not os.listdir(OUTPUT_DIR):
         logging.info("No Markdown files found. Starting fetch...")
         data.fetch_and_store_all()
-        markdown_files = find_markdown_files(OUTPUT_DIR)
     else:
         logging.info("Markdown files already exist. Skipping fetch...")
 
-    docs = load_docs(markdown_files)
+    docs = load_docs()
     logging.info(f"Loaded {len(docs)} documents.")

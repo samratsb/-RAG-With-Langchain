@@ -7,3 +7,4 @@ __pycache__
 embeddings
 embeddings.db
 chroma_db
+chunks_cache.pkl
