@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     if not markdown_files:
         logging.info("No Markdown files found. Starting fetch...")
-        data.fetch_and_store()
+        data.fetch_and_store_all()
         markdown_files = find_markdown_files(OUTPUT_DIR)
     else:
         logging.info("Markdown files already exist. Skipping fetch...")
