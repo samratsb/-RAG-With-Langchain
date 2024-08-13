@@ -7,27 +7,42 @@ from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModel
 import torch
 import chromadb
+from chromadb import Documents, EmbeddingFunction, Embeddings
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Load environment variables from .env file
 load_dotenv()
-
-# Get environment variables
 MODEL_NAME = os.getenv('MODEL_NAME')
 
-# Load the model and tokenizer from Hugging Face
 logging.info(f"Loading model: {MODEL_NAME}")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModel.from_pretrained(MODEL_NAME)
 
-# Initialize Chroma client with path to chroma_db directory
-db_path = "./chroma_db/embeddings.db"
-chroma_client = chromadb.PersistentClient(path=db_path)
+db_path = "./chroma_db/embeddings.db" # save the embeddings here
+chroma_client = chromadb.PersistentClient(path=db_path) # not recommended for production (testing and development)
 
-# Initialize collection variable
 collection = None
+
+
+class MyEmbeddingFunction(EmbeddingFunction):
+    def __init__(self, tokenizer, model):
+        self.tokenizer = tokenizer
+        self.model = model
+
+    def __call__(self, input: Documents) -> Embeddings:
+        if not all(isinstance(text, str) for text in input):
+            raise ValueError("All elements in input must be strings.")
+    
+        inputs = self.tokenizer(input, padding=True, truncation=True, return_tensors='pt')
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+        embeddings = outputs.last_hidden_state.mean(dim=1)  # Average pooling to get sentence embeddings
+
+        # Convert embeddings to a list of lists for compatibility with ChromaDB
+        embeddings = embeddings.cpu().numpy().tolist()
+                    
+        return embeddings
 
 def initialize_collection():
     global collection
